@@ -1,0 +1,18 @@
+env:
+  - name: SERVICE_NAME
+    value: "online-shop"
+  - name: ENVIRONMENT
+    value: "local"
+  - name: PORT
+    value: "8080"
+
+  - name: POSTGRES_HOST
+    value: "localhost"
+  - name: POSTGRES_PORT
+    value: "5432"
+  - name: POSTGRES_USER
+    value: "root"
+  - name: POSTGRES_PASS
+    value: "root"
+  - name: POSTGRES_SCHEMA
+    value: "postgres"
