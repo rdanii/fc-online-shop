@@ -24,8 +24,11 @@ func InitRouter(postgresConn *gorm.DB) *gin.Engine {
 		})
 	})
 
-	api := router.Group("/api/v1")
-	api.GET("/products", d.GetProducts)
+	v1 := router.Group("/api/v1")
+
+	// API Products
+	v1.GET("/products", d.GetProducts)
+	v1.GET("/products/:id", d.GetProductbyID)
 
 	return router
 }

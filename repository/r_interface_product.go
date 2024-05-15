@@ -8,6 +8,7 @@ import (
 
 type Repository interface {
 	GetAll() ([]entity.Product, error)
+	GetByID(id string) (entity.Product, error)
 }
 
 type repository struct {
@@ -19,12 +20,23 @@ func NewRepository(db *gorm.DB) Repository {
 }
 
 func (r *repository) GetAll() ([]entity.Product, error) {
-	data := []entity.Product{}
+	product := []entity.Product{}
 
-	err := r.db.Select("id", "name", "price").Find(&data, "is_delete = FALSE").Error
+	err := r.db.Select("id", "name", "price").Find(&product, "is_delete = FALSE").Error
 	if err != nil {
-		return data, err
+		return product, err
 	}
 
-	return data, nil
+	return product, nil
+}
+
+func (r *repository) GetByID(id string) (entity.Product, error) {
+	var product entity.Product
+
+	err := r.db.Select("id", "name", "price").Where("is_deleted = FALSE AND id = ?", id).Find(&product).Error
+	if err != nil {
+		return product, err
+	}
+
+	return product, nil
 }
