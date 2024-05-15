@@ -5,6 +5,12 @@ env:
     value: "local"
   - name: PORT
     value: "8080"
+  - name: BASIC_AUTH_USERNAME
+    value: "admin"
+  - name: BASIC_AUTH_PASSWORD
+    value: "admin"
+  - name: AUTHORIZATION_KEY
+    value: "secret"
 
   - name: POSTGRES_HOST
     value: "localhost"

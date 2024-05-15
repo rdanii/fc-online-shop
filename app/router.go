@@ -3,6 +3,7 @@ package app
 import (
 	"net/http"
 	"online-shop/delivery"
+	"online-shop/middleware"
 	"online-shop/repository"
 	"online-shop/usecase"
 
@@ -26,11 +27,11 @@ func InitRouter(postgresConn *gorm.DB) *gin.Engine {
 
 	v1 := router.Group("/api/v1")
 	admin := router.Group("/admin")
+	admin.Use(middleware.HeaderMiddleware())
 
 	// API Products
 	v1.GET("/products", d.GetProducts)
 	v1.GET("/products/:id", d.GetProductbyID)
-
 	admin.POST("/products", d.CreateProduct)
 	admin.PUT("/products/:id", d.UpdateProduct)
 	admin.DELETE("/products/:id", d.DeleteProduct)
