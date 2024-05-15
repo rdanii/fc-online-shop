@@ -25,10 +25,15 @@ func InitRouter(postgresConn *gorm.DB) *gin.Engine {
 	})
 
 	v1 := router.Group("/api/v1")
+	admin := router.Group("/admin")
 
 	// API Products
 	v1.GET("/products", d.GetProducts)
 	v1.GET("/products/:id", d.GetProductbyID)
+
+	admin.POST("/products", d.CreateProduct)
+	admin.PUT("/products/:id", d.UpdateProduct)
+	admin.DELETE("/products/:id", d.DeleteProduct)
 
 	return router
 }
