@@ -12,9 +12,14 @@ import (
 )
 
 func InitRouter(postgresConn *gorm.DB) *gin.Engine {
+	orderRepo := repository.NewOrderRepository(postgresConn)
+
 	r := repository.NewRepository(postgresConn)
-	u := usecase.NewUsecase(r)
+	u := usecase.NewUsecase(r, orderRepo)
 	d := delivery.NewDelivery(u)
+
+	// orderUsecase := usecase.NewOrderUsecase(orderRepo)
+	// orderDelivery := delivery.NewOrderDelivery(orderUsecase)
 
 	router := gin.Default()
 	router.Use(CORSMiddleware())
@@ -35,6 +40,9 @@ func InitRouter(postgresConn *gorm.DB) *gin.Engine {
 	admin.POST("/products", d.CreateProduct)
 	admin.PUT("/products/:id", d.UpdateProduct)
 	admin.DELETE("/products/:id", d.DeleteProduct)
+
+	// API Orders
+	v1.POST("/checkout", d.Checkout)
 
 	return router
 }

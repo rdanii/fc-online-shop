@@ -3,12 +3,14 @@ package delivery
 import (
 	"net/http"
 	"online-shop/model/dto"
+	"online-shop/model/entity"
 	"online-shop/usecase"
 
 	"github.com/gin-gonic/gin"
 )
 
 type Delivery interface {
+	Checkout(c *gin.Context)
 	GetProducts(c *gin.Context)
 	GetProductbyID(c *gin.Context)
 	CreateProduct(c *gin.Context)
@@ -124,4 +126,26 @@ func (d *delivery) DeleteProduct(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "data successfully deleted",
 	})
+}
+
+func (d *delivery) Checkout(c *gin.Context) {
+	var input entity.Checkout
+
+	err := c.ShouldBindJSON(&input)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	result, errResult := d.usecase.Checkout(input)
+	if errResult != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": errResult.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
 }

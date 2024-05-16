@@ -25,7 +25,7 @@ func NewRepository(db *gorm.DB) Repository {
 func (r *repository) GetAll() ([]entity.Product, error) {
 	product := []entity.Product{}
 
-	err := r.db.Select("id", "name", "price").Find(&product, "is_deleted = FALSE").Error
+	err := r.db.Debug().Select("id", "name", "price").Find(&product, "is_deleted = FALSE").Error
 	if err != nil {
 		return product, err
 	}
