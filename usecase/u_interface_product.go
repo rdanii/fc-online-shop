@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"errors"
+	"fmt"
 	"math/rand"
 	"online-shop/model/dto"
 	"online-shop/model/entity"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Usecase interface {
@@ -16,8 +18,8 @@ type Usecase interface {
 	GetAll() ([]entity.Product, error)
 	GetByID(id string) (entity.Product, error)
 	Create(input dto.ReqProduct) (entity.Product, error)
-	Update(inputID dto.RequestID, input dto.ReqProduct) (entity.Product, error)
-	Delete(inputID dto.RequestID) error
+	Update(id string, input dto.ReqProduct) (entity.Product, error)
+	Delete(id string) error
 }
 
 type usecase struct {
@@ -67,13 +69,13 @@ func (u *usecase) Create(input dto.ReqProduct) (entity.Product, error) {
 	return result, nil
 }
 
-func (u *usecase) Update(productID dto.RequestID, input dto.ReqProduct) (entity.Product, error) {
-	product, errProduct := u.repo.GetByID(productID.ID)
+func (u *usecase) Update(id string, input dto.ReqProduct) (entity.Product, error) {
+	product, errProduct := u.repo.GetByID(id)
 	if errProduct != nil {
 		return product, errProduct
 	}
 
-	if product.ID != productID.ID {
+	if product.ID != id {
 		return product, errors.New("product not found")
 	}
 
@@ -92,13 +94,13 @@ func (u *usecase) Update(productID dto.RequestID, input dto.ReqProduct) (entity.
 	return result, nil
 }
 
-func (u *usecase) Delete(inputID dto.RequestID) error {
-	product, err := u.repo.GetByID(inputID.ID)
+func (u *usecase) Delete(id string) error {
+	product, err := u.repo.GetByID(id)
 	if err != nil {
 		return err
 	}
 
-	if product.ID != inputID.ID {
+	if product.ID != id {
 		return errors.New("product not found")
 	}
 
@@ -113,7 +115,7 @@ func (u *usecase) Delete(inputID dto.RequestID) error {
 }
 
 func (u *usecase) Checkout(input entity.Checkout) (entity.OrderWithDetail, error) {
-	// 1. Ambil Produk
+	// 1. Ambil Produk dari Repository
 	products, err := u.repo.GetAll()
 	if err != nil {
 		return entity.OrderWithDetail{}, err
@@ -128,26 +130,34 @@ func (u *usecase) Checkout(input entity.Checkout) (entity.OrderWithDetail, error
 	// 2. Hitung Total Keseluruhan
 	var grandTotal int64
 	for _, productQty := range input.Products {
-		product := productMap[productQty.ID]
+		product, exists := productMap[productQty.ID]
+		if !exists {
+			return entity.OrderWithDetail{}, fmt.Errorf("product with ID %s not found", productQty.ID)
+		}
 		grandTotal += product.Price * int64(productQty.Quantity)
 	}
 
-	// 4. Generate Kode Akses
+	// 3. Generate Kode Akses
 	passcode := generatePasscode(5) // Mengasumsikan Anda memiliki fungsi untuk menghasilkan kode akses
 
-	// 5. Buat Pesanan
+	hashPasscode, errHash := bcrypt.GenerateFromPassword([]byte(passcode), bcrypt.MinCost)
+	if errHash != nil {
+		return entity.OrderWithDetail{}, errHash
+	}
+
+	passHash := string(hashPasscode)
+
+	// 4. Buat Pesanan
 	order := entity.Order{
 		ID:         uuid.NewString(),
 		Email:      input.Email,
 		Address:    input.Address,
 		GrandTotal: grandTotal,
-		Passcode:   &passcode,
+		Passcode:   &passHash,
 	}
 
-	// Mendeklarasikan orderDetails sebagai slice dari entity.OrderDetail
+	// 5. Buat Detail Pesanan
 	var orderDetails []entity.OrderDetail
-
-	// Mengisi orderDetails dengan detail pesanan
 	for _, productQty := range input.Products {
 		product := productMap[productQty.ID]
 		orderDetail := entity.OrderDetail{
@@ -167,21 +177,33 @@ func (u *usecase) Checkout(input entity.Checkout) (entity.OrderWithDetail, error
 		return entity.OrderWithDetail{}, err
 	}
 
-	// Mengembalikan Respon
+	// 7. Mengembalikan Respon
 	orderWithDetail := entity.OrderWithDetail{
 		Order:   order,
 		Details: orderDetails,
 	}
 
+	orderWithDetail.Order.Passcode = &passcode
+
 	return orderWithDetail, nil
 }
 
+// Fungsi untuk menghasilkan kode akses
 func generatePasscode(length int) string {
+	// Charset berisi karakter yang dapat digunakan dalam passcode
 	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+	// Membuat slice byte dengan panjang sesuai input 'length'
 	passcode := make([]byte, length)
+
+	// Seed generator angka acak dengan nilai unik berdasarkan waktu sekarang
 	rand.Seed(time.Now().UnixNano())
+
+	// Mengisi setiap indeks slice 'passcode' dengan karakter acak dari 'charset'
 	for i := range passcode {
 		passcode[i] = charset[rand.Intn(len(charset))]
 	}
+
+	// Mengembalikan passcode sebagai string
 	return string(passcode)
 }

@@ -25,7 +25,7 @@ func NewRepository(db *gorm.DB) Repository {
 func (r *repository) GetAll() ([]entity.Product, error) {
 	product := []entity.Product{}
 
-	err := r.db.Debug().Select("id", "name", "price").Find(&product, "is_deleted = FALSE").Error
+	err := r.db.Select("id", "name", "price").Find(&product, "is_deleted = FALSE").Error
 	if err != nil {
 		return product, err
 	}
@@ -63,7 +63,7 @@ func (r *repository) Update(product entity.Product) (entity.Product, error) {
 }
 
 func (r *repository) Delete(product entity.Product) (entity.Product, error) {
-	err := r.db.Debug().Updates(&product).Error
+	err := r.db.Updates(&product).Error
 	if err != nil {
 		return product, err
 	}

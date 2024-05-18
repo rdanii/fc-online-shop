@@ -75,15 +75,8 @@ func (d *delivery) CreateProduct(c *gin.Context) {
 }
 
 func (d *delivery) UpdateProduct(c *gin.Context) {
+	id := c.Param("id")
 	var input dto.ReqProduct
-	var productID dto.RequestID
-
-	errBind := c.ShouldBindUri(&productID)
-	if errBind != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": errBind.Error(),
-		})
-	}
 
 	err := c.ShouldBindJSON(&input)
 	if err != nil {
@@ -93,7 +86,7 @@ func (d *delivery) UpdateProduct(c *gin.Context) {
 		return
 	}
 
-	result, errResult := d.usecase.Update(productID, input)
+	result, errResult := d.usecase.Update(id, input)
 	if errResult != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": errResult.Error(),
@@ -105,17 +98,9 @@ func (d *delivery) UpdateProduct(c *gin.Context) {
 }
 
 func (d *delivery) DeleteProduct(c *gin.Context) {
-	var productID dto.RequestID
+	id := c.Param("id")
 
-	errBind := c.ShouldBindUri(&productID)
-	if errBind != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": errBind.Error(),
-		})
-		return
-	}
-
-	err := d.usecase.Delete(productID)
+	err := d.usecase.Delete(id)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),

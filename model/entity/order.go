@@ -14,14 +14,14 @@ type ProductQuantity struct {
 }
 
 type Order struct {
-	ID                string     `json:"id"`
-	Email             string     `json:"email"`
-	Address           string     `json:"address"`
-	GrandTotal        int64      `json:"grandTotal"`
-	Passcode          *string    `json:"passcode,omitempty"`
-	PaidAt            *time.Time `json:"paidAt,omitempty"`
-	PaidBank          *string    `json:"paidBank,omitempty"`
-	PaidAccountNumber *string    `json:"paidAccountNumber,omitempty"`
+	ID          string     `json:"id"`
+	Email       string     `json:"email"`
+	Address     string     `json:"address"`
+	GrandTotal  int64      `json:"grandTotal"`
+	Passcode    *string    `json:"passcode,omitempty"`
+	PaidAt      *time.Time `json:"paidAt,omitempty"`
+	PaidBank    *string    `json:"paidBank,omitempty"`
+	PaidAccount *string    `json:"paidAccountNumber,omitempty"`
 }
 
 type OrderDetail struct {
@@ -36,4 +36,11 @@ type OrderDetail struct {
 type OrderWithDetail struct {
 	Order
 	Details []OrderDetail `json:"detail"`
+}
+
+type Confirm struct {
+	Amount        int64  `json:"amount" binding:"required"`
+	Bank          string `json:"bank" binding:"required"`
+	AccountNumber string `json:"accountNumber" binding:"required"`
+	Passcode      string `json:"passcode" binding:"required"`
 }
