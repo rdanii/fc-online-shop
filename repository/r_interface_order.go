@@ -48,8 +48,22 @@ func (r *orderRepository) CreateOrder(order entity.Order, details []entity.Order
 func (r *orderRepository) GetByID(id string) (entity.Order, error) {
 	var order entity.Order
 
-	err := r.db.Select("id", "email", "address", "passcode", "grand_total", "paid_at", "paid_bank", "paid_account").Find(&order, "id = ?", id).Error
+	rows, err := r.db.Model(&entity.Order{}).
+		Select("id", "email", "address", "passcode", "grand_total", "paid_at", "paid_bank", "paid_account").
+		Where("id = ?", id).
+		Rows()
 	if err != nil {
+		return order, err
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		if err := r.db.ScanRows(rows, &order); err != nil {
+			return order, err
+		}
+	}
+
+	if err := rows.Err(); err != nil {
 		return order, err
 	}
 
@@ -59,8 +73,24 @@ func (r *orderRepository) GetByID(id string) (entity.Order, error) {
 func (r *orderRepository) GetDetailOrders(orderID string) ([]entity.OrderDetail, error) {
 	var orderDetails []entity.OrderDetail
 
-	err := r.db.Select("id", "order_id", "product_id", "quantity", "price", "total").Find(&orderDetails, "order_id", orderID).Error
+	rows, err := r.db.Model(&entity.OrderDetail{}).
+		Select("id", "order_id", "product_id", "quantity", "price", "total").
+		Where("order_id = ?", orderID).
+		Rows()
 	if err != nil {
+		return orderDetails, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var orderDetail entity.OrderDetail
+		if err := r.db.ScanRows(rows, &orderDetail); err != nil {
+			return orderDetails, err
+		}
+		orderDetails = append(orderDetails, orderDetail)
+	}
+
+	if err := rows.Err(); err != nil {
 		return orderDetails, err
 	}
 

@@ -18,7 +18,10 @@ func ConnectPostgreSQL() (*gorm.DB, error) {
 		viper.GetString("POSTGRES_SCHEMA"),
 	)
 
-	postgresConn, err := gorm.Open(postgres.Open(connectionString), &gorm.Config{})
+	postgresConn, err := gorm.Open(postgres.Open(connectionString), &gorm.Config{
+		SkipDefaultTransaction: true,
+		PrepareStmt:            true,
+	})
 	if err != nil {
 		log.Println("Error connect to PostgreSQL: ", err.Error())
 		return nil, err
