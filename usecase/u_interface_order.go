@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"context"
 	"errors"
 	"online-shop/model/entity"
 	"online-shop/repository"
@@ -10,8 +11,8 @@ import (
 )
 
 type OrderUsecase interface {
-	Confirm(id string, input entity.Confirm) (entity.Order, error)
-	GetDetailOrder(id string, passcode string) (entity.OrderWithDetail, error)
+	Confirm(c context.Context, id string, input entity.Confirm) (entity.Order, error)
+	GetDetailOrder(c context.Context, id string, passcode string) (entity.OrderWithDetail, error)
 }
 
 type orderUsecase struct {
@@ -22,8 +23,8 @@ func NewOrderUsecase(repo repository.OrderRepository) OrderUsecase {
 	return &orderUsecase{repo}
 }
 
-func (u *orderUsecase) Confirm(id string, input entity.Confirm) (entity.Order, error) {
-	order, err := u.repo.GetByID(id)
+func (u *orderUsecase) Confirm(c context.Context, id string, input entity.Confirm) (entity.Order, error) {
+	order, err := u.repo.GetByID(c, id)
 	if err != nil {
 		return order, err
 	}
@@ -49,7 +50,7 @@ func (u *orderUsecase) Confirm(id string, input entity.Confirm) (entity.Order, e
 	order.PaidBank = &input.Bank
 	order.GrandTotal = input.Amount
 
-	update, errUpdate := u.repo.Update(order)
+	update, errUpdate := u.repo.Update(c, order)
 	if errUpdate != nil {
 		return update, errUpdate
 	}
@@ -57,8 +58,8 @@ func (u *orderUsecase) Confirm(id string, input entity.Confirm) (entity.Order, e
 	return update, nil
 }
 
-func (u *orderUsecase) GetDetailOrder(id string, passcode string) (entity.OrderWithDetail, error) {
-	order, err := u.repo.GetByID(id)
+func (u *orderUsecase) GetDetailOrder(c context.Context, id string, passcode string) (entity.OrderWithDetail, error) {
+	order, err := u.repo.GetByID(c, id)
 	if err != nil {
 		return entity.OrderWithDetail{}, err
 	}
@@ -74,7 +75,7 @@ func (u *orderUsecase) GetDetailOrder(id string, passcode string) (entity.OrderW
 
 	order.Passcode = nil
 
-	orderDetails, errDetails := u.repo.GetDetailOrders(id)
+	orderDetails, errDetails := u.repo.GetDetailOrders(c, id)
 	if errDetails != nil {
 		return entity.OrderWithDetail{}, errDetails
 	}

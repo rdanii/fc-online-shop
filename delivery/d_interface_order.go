@@ -34,7 +34,7 @@ func (d *orderDelivery) CreateOrder(c *gin.Context) {
 		return
 	}
 
-	result, errResult := d.usecase.Checkout(input)
+	result, errResult := d.usecase.Checkout(c, input)
 	if errResult != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": errResult.Error(),
@@ -57,7 +57,7 @@ func (d *orderDelivery) ConfirmOrder(c *gin.Context) {
 		return
 	}
 
-	result, errResult := d.orderUsecase.Confirm(id, order)
+	result, errResult := d.orderUsecase.Confirm(c, id, order)
 	if errResult != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": errResult.Error(),
@@ -72,7 +72,7 @@ func (d *orderDelivery) GetDetailOrder(c *gin.Context) {
 	id := c.Param("id")
 	passcode := c.Query("passcode")
 
-	result, err := d.orderUsecase.GetDetailOrder(id, passcode)
+	result, err := d.orderUsecase.GetDetailOrder(c, id, passcode)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),

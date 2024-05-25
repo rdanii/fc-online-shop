@@ -21,6 +21,7 @@ func main() {
 	env := *envF
 	config.InitConfig(env)
 
+	// Inisialisasi koneksi PostgreSQL
 	postgresConn, errPostgres := config.ConnectPostgreSQL()
 	if errPostgres != nil {
 		log.Panic("error PostgreSQL connection: ", errPostgres)
@@ -31,28 +32,37 @@ func main() {
 		}
 	}()
 
-	router := app.InitRouter(postgresConn)
+	// Inisialisasi koneksi Redis
+	redisClient := config.NewRedisClient()
+
+	// Inisialisasi router dengan koneksi PostgreSQL dan Redis
+	router := app.InitRouter(postgresConn, redisClient)
 	log.Println("routes initialized")
 
+	// Mendapatkan port dari konfigurasi
 	port := viper.GetString("PORT")
 
+	// Inisialisasi server HTTP
 	server := &http.Server{
 		Addr:    ":" + port,
 		Handler: router,
 	}
 	log.Println("Server initialized, listening at port:", port)
 
+	// Mulai server HTTP dalam goroutine
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Printf("listen: %s\n", err.Error())
 		}
 	}()
 
+	// Tunggu sinyal shutdown dari OS
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 	<-quit
 	log.Println("Shutdown Server ...")
 
+	// Set timeout context untuk shutdown server
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {

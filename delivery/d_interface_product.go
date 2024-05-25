@@ -27,7 +27,7 @@ func NewDelivery(usecase usecase.Usecase) Delivery {
 }
 
 func (d *delivery) GetProducts(c *gin.Context) {
-	result, err := d.usecase.GetAll()
+	result, err := d.usecase.GetAll(c)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -124,7 +124,7 @@ func (d *delivery) Checkout(c *gin.Context) {
 		return
 	}
 
-	result, errResult := d.usecase.Checkout(input)
+	result, errResult := d.usecase.Checkout(c, input)
 	if errResult != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": errResult.Error(),

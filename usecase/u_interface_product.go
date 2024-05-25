@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -14,8 +15,8 @@ import (
 )
 
 type Usecase interface {
-	Checkout(input entity.Checkout) (entity.OrderWithDetail, error)
-	GetAll() ([]entity.Product, error)
+	Checkout(c context.Context, input entity.Checkout) (entity.OrderWithDetail, error)
+	GetAll(c context.Context) ([]entity.Product, error)
 	GetByID(id string) (entity.Product, error)
 	Create(input dto.ReqProduct) (entity.Product, error)
 	Update(id string, input dto.ReqProduct) (entity.Product, error)
@@ -31,8 +32,8 @@ func NewUsecase(repo repository.Repository, orderRepo repository.OrderRepository
 	return &usecase{repo, orderRepo}
 }
 
-func (u *usecase) GetAll() ([]entity.Product, error) {
-	result, err := u.repo.GetAll()
+func (u *usecase) GetAll(c context.Context) ([]entity.Product, error) {
+	result, err := u.repo.GetAll(c)
 	if err != nil {
 		return result, err
 	}
@@ -114,9 +115,9 @@ func (u *usecase) Delete(id string) error {
 	return nil
 }
 
-func (u *usecase) Checkout(input entity.Checkout) (entity.OrderWithDetail, error) {
+func (u *usecase) Checkout(c context.Context, input entity.Checkout) (entity.OrderWithDetail, error) {
 	// 1. Ambil Produk dari Repository
-	products, err := u.repo.GetAll()
+	products, err := u.repo.GetAll(c)
 	if err != nil {
 		return entity.OrderWithDetail{}, err
 	}

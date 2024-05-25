@@ -8,13 +8,15 @@ import (
 	"online-shop/usecase"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
-func InitRouter(postgresConn *gorm.DB) *gin.Engine {
-	orderRepo := repository.NewOrderRepository(postgresConn)
+func InitRouter(postgresConn *gorm.DB, redisClient *redis.Client) *gin.Engine {
 
-	r := repository.NewRepository(postgresConn)
+	orderRepo := repository.NewOrderRepository(postgresConn, redisClient)
+
+	r := repository.NewRepository(postgresConn, redisClient)
 	u := usecase.NewUsecase(r, orderRepo)
 	d := delivery.NewDelivery(u)
 
