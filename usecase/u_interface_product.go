@@ -17,10 +17,10 @@ import (
 type Usecase interface {
 	Checkout(c context.Context, input entity.Checkout) (entity.OrderWithDetail, error)
 	GetAll(c context.Context) ([]entity.Product, error)
-	GetByID(id string) (entity.Product, error)
-	Create(input dto.ReqProduct) (entity.Product, error)
-	Update(id string, input dto.ReqProduct) (entity.Product, error)
-	Delete(id string) error
+	GetByID(c context.Context, id string) (entity.Product, error)
+	Create(c context.Context, input dto.ReqProduct) (entity.Product, error)
+	Update(c context.Context, id string, input dto.ReqProduct) (entity.Product, error)
+	Delete(c context.Context, id string) error
 }
 
 type usecase struct {
@@ -41,8 +41,8 @@ func (u *usecase) GetAll(c context.Context) ([]entity.Product, error) {
 	return result, nil
 }
 
-func (u *usecase) GetByID(id string) (entity.Product, error) {
-	result, err := u.repo.GetByID(id)
+func (u *usecase) GetByID(c context.Context, id string) (entity.Product, error) {
+	result, err := u.repo.GetByID(c, id)
 	if err != nil {
 		return result, err
 	}
@@ -54,7 +54,7 @@ func (u *usecase) GetByID(id string) (entity.Product, error) {
 	return result, nil
 }
 
-func (u *usecase) Create(input dto.ReqProduct) (entity.Product, error) {
+func (u *usecase) Create(c context.Context, input dto.ReqProduct) (entity.Product, error) {
 	product := entity.Product{
 		ID:        uuid.New().String(),
 		Name:      input.Name,
@@ -62,7 +62,7 @@ func (u *usecase) Create(input dto.ReqProduct) (entity.Product, error) {
 		IsDeleted: &[]bool{false}[0],
 	}
 
-	result, err := u.repo.Create(product)
+	result, err := u.repo.Create(c, product)
 	if err != nil {
 		return result, err
 	}
@@ -70,8 +70,8 @@ func (u *usecase) Create(input dto.ReqProduct) (entity.Product, error) {
 	return result, nil
 }
 
-func (u *usecase) Update(id string, input dto.ReqProduct) (entity.Product, error) {
-	product, errProduct := u.repo.GetByID(id)
+func (u *usecase) Update(c context.Context, id string, input dto.ReqProduct) (entity.Product, error) {
+	product, errProduct := u.repo.GetByID(c, id)
 	if errProduct != nil {
 		return product, errProduct
 	}
@@ -87,7 +87,7 @@ func (u *usecase) Update(id string, input dto.ReqProduct) (entity.Product, error
 	product.Name = input.Name
 	product.Price = input.Price
 
-	result, err := u.repo.Update(product)
+	result, err := u.repo.Update(c, product)
 	if err != nil {
 		return result, err
 	}
@@ -95,8 +95,8 @@ func (u *usecase) Update(id string, input dto.ReqProduct) (entity.Product, error
 	return result, nil
 }
 
-func (u *usecase) Delete(id string) error {
-	product, err := u.repo.GetByID(id)
+func (u *usecase) Delete(c context.Context, id string) error {
+	product, err := u.repo.GetByID(c, id)
 	if err != nil {
 		return err
 	}
@@ -107,7 +107,7 @@ func (u *usecase) Delete(id string) error {
 
 	product.IsDeleted = &[]bool{true}[0]
 
-	_, errResult := u.repo.Delete(product)
+	_, errResult := u.repo.Delete(c, product)
 	if errResult != nil {
 		return errResult
 	}

@@ -7,15 +7,16 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/spf13/viper"
 	"gorm.io/gorm"
 )
 
 type Repository interface {
 	GetAll(c context.Context) ([]entity.Product, error)
-	GetByID(id string) (entity.Product, error)
-	Create(product entity.Product) (entity.Product, error)
-	Update(product entity.Product) (entity.Product, error)
-	Delete(product entity.Product) (entity.Product, error)
+	GetByID(c context.Context, id string) (entity.Product, error)
+	Create(c context.Context, product entity.Product) (entity.Product, error)
+	Update(c context.Context, product entity.Product) (entity.Product, error)
+	Delete(c context.Context, product entity.Product) (entity.Product, error)
 }
 
 type repository struct {
@@ -28,11 +29,11 @@ func NewRepository(db *gorm.DB, redis *redis.Client) Repository {
 }
 
 func (r *repository) GetAll(c context.Context) ([]entity.Product, error) {
-
 	var products []entity.Product
+	productKey := viper.GetString("PRODUCTS_KEY")
 
 	// Mencoba untuk mendapatkan data dari cache Redis
-	cachedData, err := r.redis.Get(c, "all_products").Result()
+	cachedData, err := r.redis.Get(c, productKey).Result()
 	if err == nil {
 		// Jika data ditemukan di cache, kita bisa langsung mengembalikannya
 		if err := json.Unmarshal([]byte(cachedData), &products); err != nil {
@@ -42,7 +43,23 @@ func (r *repository) GetAll(c context.Context) ([]entity.Product, error) {
 	}
 
 	// Jika data tidak ada di cache, kita harus mengambilnya dari database
-	if err := r.db.Select("id", "name", "price").Find(&products, "is_deleted = FALSE").Error; err != nil {
+	rows, err := r.db.Model(&products).Select("id, name, price").Where("is_deleted = ?", false).Rows()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var product entity.Product
+		err := rows.Scan(&product.ID, &product.Name, &product.Price)
+		if err != nil {
+			return nil, err
+		}
+		products = append(products, product)
+	}
+
+	err = rows.Err()
+	if err != nil {
 		return nil, err
 	}
 
@@ -51,17 +68,52 @@ func (r *repository) GetAll(c context.Context) ([]entity.Product, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := r.redis.Set(c, "all_products", jsonData, 24*time.Hour).Err(); err != nil {
+
+	// Simpan data JSON ke Redis
+	err = r.redis.Set(c, productKey, jsonData, 24*time.Hour).Err()
+	if err != nil {
 		return nil, err
 	}
 
 	return products, nil
 }
 
-func (r *repository) GetByID(id string) (entity.Product, error) {
+func (r *repository) GetByID(c context.Context, id string) (entity.Product, error) {
 	var product entity.Product
+	productIdKey := viper.GetString("PRODUCT_ID_KEY") + id
 
-	err := r.db.Select("id", "name", "price").Find(&product, "is_deleted = FALSE AND id = ?", id).Error
+	cachedData, err := r.redis.Get(c, productIdKey).Result()
+	if err == nil {
+		if err := json.Unmarshal([]byte(cachedData), &product); err != nil {
+			return product, err
+		}
+		return product, nil
+	}
+
+	rows, err := r.db.Model(&product).Select("id, name, price").Where("is_deleted = ? AND id = ?", false, id).Rows()
+	if err != nil {
+		return product, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err := r.db.ScanRows(rows, &product)
+		if err != nil {
+			return product, err
+		}
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return product, err
+	}
+
+	jsonData, err := json.Marshal(product)
+	if err != nil {
+		return product, err
+	}
+
+	err = r.redis.Set(c, productIdKey, jsonData, 24*time.Hour).Err()
 	if err != nil {
 		return product, err
 	}
@@ -69,17 +121,15 @@ func (r *repository) GetByID(id string) (entity.Product, error) {
 	return product, nil
 }
 
-func (r *repository) Create(product entity.Product) (entity.Product, error) {
+func (r *repository) Create(c context.Context, product entity.Product) (entity.Product, error) {
+	productKey := viper.GetString("PRODUCTS_KEY")
+
 	err := r.db.Create(&product).Error
 	if err != nil {
 		return product, err
 	}
 
-	return product, nil
-}
-
-func (r *repository) Update(product entity.Product) (entity.Product, error) {
-	err := r.db.Updates(&product).Error
+	err = r.redis.Del(c, productKey).Err()
 	if err != nil {
 		return product, err
 	}
@@ -87,8 +137,35 @@ func (r *repository) Update(product entity.Product) (entity.Product, error) {
 	return product, nil
 }
 
-func (r *repository) Delete(product entity.Product) (entity.Product, error) {
+func (r *repository) Update(c context.Context, product entity.Product) (entity.Product, error) {
+	productKey := viper.GetString("PRODUCTS_KEY")
+	productIdKey := viper.GetString("PRODUCT_ID_KEY") + product.ID
+
 	err := r.db.Updates(&product).Error
+	if err != nil {
+		return product, err
+	}
+
+	// Invalidate the cache for all products and the specific product
+	err = r.redis.Del(c, productKey, productIdKey).Err()
+	if err != nil {
+		return product, err
+	}
+
+	return product, nil
+}
+
+func (r *repository) Delete(c context.Context, product entity.Product) (entity.Product, error) {
+	productKey := viper.GetString("PRODUCTS_KEY")
+	productIdKey := viper.GetString("PRODUCT_ID_KEY") + product.ID
+
+	err := r.db.Updates(&product).Error
+	if err != nil {
+		return product, err
+	}
+
+	// Invalidate the cache for all products and the specific product
+	err = r.redis.Del(c, productKey, productIdKey).Err()
 	if err != nil {
 		return product, err
 	}

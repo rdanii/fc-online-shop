@@ -22,3 +22,8 @@ env:
     value: "root"
   - name: POSTGRES_SCHEMA
     value: "postgres"
+
+  - name: PRODUCTS_KEY
+    value: "products"
+  - name: PRODUCT_ID_KEY
+    value: "product_"

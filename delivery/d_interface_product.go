@@ -41,7 +41,7 @@ func (d *delivery) GetProducts(c *gin.Context) {
 func (d *delivery) GetProductbyID(c *gin.Context) {
 	id := c.Param("id")
 
-	result, err := d.usecase.GetByID(id)
+	result, err := d.usecase.GetByID(c, id)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
@@ -63,7 +63,7 @@ func (d *delivery) CreateProduct(c *gin.Context) {
 		return
 	}
 
-	result, errResult := d.usecase.Create(input)
+	result, errResult := d.usecase.Create(c, input)
 	if errResult != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": errResult.Error(),
@@ -86,7 +86,7 @@ func (d *delivery) UpdateProduct(c *gin.Context) {
 		return
 	}
 
-	result, errResult := d.usecase.Update(id, input)
+	result, errResult := d.usecase.Update(c, id, input)
 	if errResult != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": errResult.Error(),
@@ -100,7 +100,7 @@ func (d *delivery) UpdateProduct(c *gin.Context) {
 func (d *delivery) DeleteProduct(c *gin.Context) {
 	id := c.Param("id")
 
-	err := d.usecase.Delete(id)
+	err := d.usecase.Delete(c, id)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),

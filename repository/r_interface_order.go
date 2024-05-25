@@ -70,12 +70,14 @@ func (r *orderRepository) GetByID(c context.Context, id string) (entity.Order, e
 	defer rows.Close()
 
 	if rows.Next() {
-		if err := r.db.ScanRows(rows, &order); err != nil {
+		err := r.db.ScanRows(rows, &order)
+		if err != nil {
 			return order, err
 		}
 	}
 
-	if err := rows.Err(); err != nil {
+	err = rows.Err()
+	if err != nil {
 		return order, err
 	}
 
@@ -97,7 +99,7 @@ func (r *orderRepository) GetByID(c context.Context, id string) (entity.Order, e
 func (r *orderRepository) GetDetailOrders(c context.Context, orderID string) ([]entity.OrderDetail, error) {
 	var orderDetails []entity.OrderDetail
 
-	cachedDetails, err := r.redis.Get(c, "details_"+orderID).Result()
+	cachedDetails, err := r.redis.Get(c, orderID).Result()
 	if err == nil {
 		json.Unmarshal([]byte(cachedDetails), &orderDetails)
 		return orderDetails, nil
@@ -129,7 +131,7 @@ func (r *orderRepository) GetDetailOrders(c context.Context, orderID string) ([]
 		return nil, err
 	}
 
-	err = r.redis.Set(c, "details_"+orderID, detailsJson, 0).Err()
+	err = r.redis.Set(c, orderID, detailsJson, 0).Err()
 	if err != nil {
 		return nil, err
 	}
@@ -143,11 +145,8 @@ func (r *orderRepository) Update(c context.Context, order entity.Order) (entity.
 		return order, err
 	}
 
-	// Gabungkan kunci yang akan dihapus dalam satu slice
-	keysToDelete := []string{order.ID, "details_" + order.ID}
-
 	// Hapus kunci-kunci tersebut dari Redis
-	err = r.redis.Del(c, keysToDelete...).Err()
+	err = r.redis.Del(c, order.ID).Err()
 	if err != nil {
 		return order, err
 	}
