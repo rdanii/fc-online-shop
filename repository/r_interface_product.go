@@ -127,12 +127,6 @@ func (r *repository) Create(c context.Context, product entity.Product) (entity.P
 	productKey := viper.GetString("PRODUCTS_KEY")
 	productIdKey := viper.GetString("PRODUCT_ID_KEY") + product.ID
 
-	// Membuat produk di database
-	err := r.db.Create(&product).Error
-	if err != nil {
-		return product, err
-	}
-
 	// Mendapatkan data cache saat ini
 	cachedData, err := r.redis.Get(c, productKey).Result()
 	if err != nil && err != redis.Nil {
@@ -177,18 +171,18 @@ func (r *repository) Create(c context.Context, product entity.Product) (entity.P
 		return product, err
 	}
 
+	// Membuat produk di database
+	err = r.db.Create(&product).Error
+	if err != nil {
+		return product, err
+	}
+
 	return product, nil
 }
 
 func (r *repository) Update(c context.Context, product entity.Product) (entity.Product, error) {
 	productKey := viper.GetString("PRODUCTS_KEY")
 	productIdKey := viper.GetString("PRODUCT_ID_KEY") + product.ID
-
-	// Mengupdate produk di database
-	err := r.db.Updates(&product).Error
-	if err != nil {
-		return product, err
-	}
 
 	// Mengupdate cache produk
 	jsonData, err := json.Marshal(product)
@@ -230,6 +224,12 @@ func (r *repository) Update(c context.Context, product entity.Product) (entity.P
 		}
 	}
 
+	// Mengupdate produk di database
+	err = r.db.Updates(&product).Error
+	if err != nil {
+		return product, err
+	}
+
 	return product, nil
 }
 
@@ -237,14 +237,8 @@ func (r *repository) Delete(c context.Context, product entity.Product) (entity.P
 	productKey := viper.GetString("PRODUCTS_KEY")
 	productIdKey := viper.GetString("PRODUCT_ID_KEY") + product.ID
 
-	// Menandai produk sebagai dihapus di database
-	err := r.db.Updates(&product).Error
-	if err != nil {
-		return product, err
-	}
-
 	// Menghapus produk dari cache produk
-	err = r.redis.Del(c, productIdKey).Err()
+	err := r.redis.Del(c, productIdKey).Err()
 	if err != nil {
 		return product, err
 	}
@@ -276,6 +270,12 @@ func (r *repository) Delete(c context.Context, product entity.Product) (entity.P
 		if err != nil {
 			return product, err
 		}
+	}
+
+	// Menandai produk sebagai dihapus di database
+	err = r.db.Updates(&product).Error
+	if err != nil {
+		return product, err
 	}
 
 	return product, nil
