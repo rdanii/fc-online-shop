@@ -36,7 +36,8 @@ func (r *repository) GetAll(c context.Context) ([]entity.Product, error) {
 	cachedData, err := r.redis.Get(c, productKey).Result()
 	if err == nil {
 		// Jika data ditemukan di cache, kita bisa langsung mengembalikannya
-		if err := json.Unmarshal([]byte(cachedData), &products); err != nil {
+		err := json.Unmarshal([]byte(cachedData), &products)
+		if err != nil {
 			return nil, err
 		}
 		return products, nil
@@ -51,7 +52,7 @@ func (r *repository) GetAll(c context.Context) ([]entity.Product, error) {
 
 	for rows.Next() {
 		var product entity.Product
-		err := rows.Scan(&product.ID, &product.Name, &product.Price)
+		err := r.db.ScanRows(rows, &product)
 		if err != nil {
 			return nil, err
 		}
@@ -84,7 +85,8 @@ func (r *repository) GetByID(c context.Context, id string) (entity.Product, erro
 
 	cachedData, err := r.redis.Get(c, productIdKey).Result()
 	if err == nil {
-		if err := json.Unmarshal([]byte(cachedData), &product); err != nil {
+		err := json.Unmarshal([]byte(cachedData), &product)
+		if err != nil {
 			return product, err
 		}
 		return product, nil
@@ -123,13 +125,54 @@ func (r *repository) GetByID(c context.Context, id string) (entity.Product, erro
 
 func (r *repository) Create(c context.Context, product entity.Product) (entity.Product, error) {
 	productKey := viper.GetString("PRODUCTS_KEY")
+	productIdKey := viper.GetString("PRODUCT_ID_KEY") + product.ID
 
+	// Membuat produk di database
 	err := r.db.Create(&product).Error
 	if err != nil {
 		return product, err
 	}
 
-	err = r.redis.Del(c, productKey).Err()
+	// Mendapatkan data cache saat ini
+	cachedData, err := r.redis.Get(c, productKey).Result()
+	if err != nil && err != redis.Nil {
+		return product, err
+	}
+
+	// Inisialisasi objek untuk menyimpan produk
+	var products []entity.Product
+
+	// Jika data ada di cache, kita mengurai JSON
+	if cachedData != "" {
+		err := json.Unmarshal([]byte(cachedData), &products)
+		if err != nil {
+			return product, err
+		}
+	}
+
+	// Menambahkan produk baru ke data cache
+	products = append(products, product)
+
+	// Mengupdate cache dengan daftar produk yang baru
+	jsonData, err := json.Marshal(products)
+	if err != nil {
+		return product, err
+	}
+
+	// Mengupdate cache dengan daftar produk yang baru
+	err = r.redis.Set(c, productKey, jsonData, 24*time.Hour).Err()
+	if err != nil {
+		return product, err
+	}
+
+	// Menyimpan produk sebagai objek tunggal di Redis untuk akses cepat berdasarkan id
+	jsonProduct, err := json.Marshal(product)
+	if err != nil {
+		return product, err
+	}
+
+	// Menyimpan produk sebagai objek tunggal di Redis untuk akses cepat berdasarkan id
+	err = r.redis.Set(c, productIdKey, jsonProduct, 24*time.Hour).Err()
 	if err != nil {
 		return product, err
 	}
@@ -141,15 +184,50 @@ func (r *repository) Update(c context.Context, product entity.Product) (entity.P
 	productKey := viper.GetString("PRODUCTS_KEY")
 	productIdKey := viper.GetString("PRODUCT_ID_KEY") + product.ID
 
+	// Mengupdate produk di database
 	err := r.db.Updates(&product).Error
 	if err != nil {
 		return product, err
 	}
 
-	// Invalidate the cache for all products and the specific product
-	err = r.redis.Del(c, productKey, productIdKey).Err()
+	// Mengupdate cache produk
+	jsonData, err := json.Marshal(product)
 	if err != nil {
 		return product, err
+	}
+
+	err = r.redis.Set(c, productIdKey, jsonData, 24*time.Hour).Err()
+	if err != nil {
+		return product, err
+	}
+
+	// Mendapatkan data cache saat ini
+	var products []entity.Product
+	cachedData, err := r.redis.Get(c, productKey).Result()
+	if err == nil {
+		err := json.Unmarshal([]byte(cachedData), &products)
+		if err != nil {
+			return product, err
+		}
+
+		// Mengupdate produk tertentu dalam daftar cache
+		for i, p := range products {
+			if p.ID == product.ID {
+				products[i] = product
+				break
+			}
+		}
+
+		// Mengupdate cache dengan daftar produk yang telah dimodifikasi
+		jsonData, err := json.Marshal(products)
+		if err != nil {
+			return product, err
+		}
+
+		err = r.redis.Set(c, productKey, jsonData, 24*time.Hour).Err()
+		if err != nil {
+			return product, err
+		}
 	}
 
 	return product, nil
@@ -159,15 +237,45 @@ func (r *repository) Delete(c context.Context, product entity.Product) (entity.P
 	productKey := viper.GetString("PRODUCTS_KEY")
 	productIdKey := viper.GetString("PRODUCT_ID_KEY") + product.ID
 
+	// Menandai produk sebagai dihapus di database
 	err := r.db.Updates(&product).Error
 	if err != nil {
 		return product, err
 	}
 
-	// Invalidate the cache for all products and the specific product
-	err = r.redis.Del(c, productKey, productIdKey).Err()
+	// Menghapus produk dari cache produk
+	err = r.redis.Del(c, productIdKey).Err()
 	if err != nil {
 		return product, err
+	}
+
+	// Mendapatkan data cache saat ini
+	var products []entity.Product
+	cachedData, err := r.redis.Get(c, productKey).Result()
+	if err == nil {
+		err := json.Unmarshal([]byte(cachedData), &products)
+		if err != nil {
+			return product, err
+		}
+
+		// Menghapus produk tertentu dari daftar cache
+		for i, p := range products {
+			if p.ID == product.ID {
+				products = append(products[:i], products[i+1:]...)
+				break
+			}
+		}
+
+		// Mengupdate cache dengan daftar produk yang telah dimodifikasi
+		jsonData, err := json.Marshal(products)
+		if err != nil {
+			return product, err
+		}
+
+		err = r.redis.Set(c, productKey, jsonData, 24*time.Hour).Err()
+		if err != nil {
+			return product, err
+		}
 	}
 
 	return product, nil
