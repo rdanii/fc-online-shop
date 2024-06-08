@@ -35,7 +35,7 @@ type OrderDetail struct {
 
 type OrderWithDetail struct {
 	Order
-	Details []OrderDetail `json:"detail"`
+	Details []OrderDetail `json:"detail,omitempty"`
 }
 
 type Confirm struct {

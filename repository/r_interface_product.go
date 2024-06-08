@@ -272,7 +272,7 @@ func (r *repository) Delete(c context.Context, product entity.Product) (entity.P
 		}
 	}
 
-	// Menandai produk sebagai dihapus di database
+	// Menghapus produk di database
 	err = r.db.Updates(&product).Error
 	if err != nil {
 		return product, err
