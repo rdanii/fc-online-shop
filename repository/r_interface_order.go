@@ -99,12 +99,6 @@ func (r *orderRepository) GetByID(c context.Context, id string) (entity.Order, e
 func (r *orderRepository) GetDetailOrders(c context.Context, orderID string) ([]entity.OrderDetail, error) {
 	var orderDetails []entity.OrderDetail
 
-	cachedDetails, err := r.redis.Get(c, orderID).Result()
-	if err == nil {
-		json.Unmarshal([]byte(cachedDetails), &orderDetails)
-		return orderDetails, nil
-	}
-
 	rows, err := r.db.Model(&entity.OrderDetail{}).
 		Select("id", "order_id", "product_id", "quantity", "price", "total").
 		Where("order_id = ?", orderID).
@@ -122,7 +116,8 @@ func (r *orderRepository) GetDetailOrders(c context.Context, orderID string) ([]
 		orderDetails = append(orderDetails, orderDetail)
 	}
 
-	if err := rows.Err(); err != nil {
+	err = rows.Err()
+	if err != nil {
 		return orderDetails, err
 	}
 
